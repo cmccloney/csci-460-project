@@ -1,0 +1,9 @@
+Basic understanding of FAT32:
+
+https://www.ufsexplorer.com/articles/file-systems-basics.php
+https://en.wikipedia.org/wiki/File_Allocation_Table#FAT32
+
+Overview:
+
+https://www.cs.drexel.edu/~jjohnson/2012-13/fall/cs370/resources/File%20Allocation%20Table.pdf
+https://support.microsoft.com/en-us/help/154997/description-of-the-fat32-file-system
