@@ -7,8 +7,8 @@ typedef struct { //struct that defines partition table
     unsigned char start_chs[3];
     unsigned char partition_type;
     unsigned char end_chs[3];
-    unsigned long start_sector;
-    unsigned long length_sectors;
+    unsigned int start_sector;
+    unsigned int length_sectors;
 } __attribute((packed)) PartitionTable;
 
 int main() {
