@@ -11,6 +11,7 @@ struct info {
 	unsigned int current_sector;
 	unsigned char sector_flags;
 	unsigned int root_dir_size;
+	unsigned int fs;
 	unsigned char buffer[512]; //512 bytes
 };
 
@@ -90,7 +91,7 @@ struct info fat_info; //FAT info, global variable
 
 int read_sector(unsigned char *data, unsigned int sector){ //read in a sector
 	FILE *file;
-	file = fopen("fat_file","r+b");
+	file = fopen("test.fat","r+b");
 	fseek(file, sector*512,0); //512 bytes
 	fread(data,1,512,file);
 	fclose(file);
@@ -99,7 +100,7 @@ int read_sector(unsigned char *data, unsigned int sector){ //read in a sector
 
 int write_sector(unsigned char *data, unsigned int sector){ //write to a sector
 	FILE *file;
-	file = fopen("fat_file","r+b");
+	file = fopen("test.fat","r+");
 	fseek(file,sector*512,0);
 	fwrite(data,1,512,file);
 	fclose(file);
@@ -116,35 +117,79 @@ int fetch(unsigned int sector){ //fetch a given sector
 	if(!new_sec){
 		fat_info.current_sector = sector;
 	}
+	printf("finished fetch\n");
 	return new_sec;
+}
+
+void bpbInit(struct bpb *BPB){
+	BPB->jump_boot[0] = 0xEB;
+	BPB->jump_boot[1] = 0x58;
+	BPB->jump_boot[2] = 0x90;
+	memcpy(BPB->oemname, "dosfs", 8);
+	BPB->bytes_per_sector = (unsigned short) 512;
+	BPB->sectors_per_cluster = 32;
+	BPB->num_reserved_sectors = 32;
+	BPB->num_fats = 2;
+	BPB->root_max_entries = 0;
+	BPB->total_sectors_16 = 0;
+
 }
 
 void init(){ //initialize the FAT32 structure
 	struct bpb *BPB;
-	unsigned int fat_size, root_dir_sectors; //more will be added here
+	unsigned int fat_size, root_dir_sectors, data_sectors, cluster_count; //more will be added here
 	//init fat_info for running, and read in first sector, sector zero
-	fat_info.current_sector = -1;
-	fat_info.sector_flags = 0;
-	fetch(0); //actually fetch sector 0
-
+	//fat_info.current_sector = -1;
+	//fat_info.sector_flags = 0;
+	//fetch(0); //actually fetch sector 0
+	fat_info.fs = open("test.fat", READ_ONLY);
+	
 	BPB = (struct bpb *) fat_info.buffer; //may not be necessary
-
+	bpbInit(BPB); //initialize some BPB values
+	
 	if(BPB->bytes_per_sector != 512){ //check if BPB is structured right
-		printf("Error: wrong filesystem!\n");
+		printf("%dError: wrong filesystem!\n",BPB->bytes_per_sector);
 		return;
 	}
 
 	root_dir_sectors = ((BPB->root_max_entries * 32) + (BPB->bytes_per_sector - 1)) / 512; //check Microsoft's white paper for more info
 										//on these formulas (pg. 13-)
+	
 	if(BPB->fat_size_16 != 0){
 		fat_size = BPB->fat_size_16;
 	}else{
 		fat_size = BPB->fat32.fat_size;
 	}
 	
+	if(BPB->total_sectors_16 != 0){
+		fat_info.total_sectors = BPB->total_sectors_16;
+	}else{
+		fat_info.total_sectors = BPB->total_sectors_32;
+	}
+
+	data_sectors = fat_info.total_sectors - (BPB->num_reserved_sectors + (BPB->num_fats * fat_size) + root_dir_sectors);
+	fat_info.sectors_per_cluster = BPB->sectors_per_cluster;
+	cluster_count = data_sectors / fat_info.sectors_per_cluster;
+	fat_info.reserved_sectors = BPB->num_reserved_sectors;
+	fat_info.first_data_sector = BPB->num_reserved_sectors + (BPB->num_fats * fat_size) + root_dir_sectors;
 	
+	if(cluster_count < 4085){
+		printf("Error: FAT12\n");
+		return;
+	}else if(cluster_count < 65525){
+		printf("Error: FAT16\n");
+		return;
+	}else{
+		printf("Volume is FAT32\n");
+	}
+	
+	fat_info.root_dir_size = 0xffffffff;
+
+
+
 }
 
 int main() {
+	init();
 	return 0;   
 }
