@@ -96,6 +96,7 @@ struct ffile {
 #define VOLUME_ID 0x08
 #define DIRECTORY 0x10
 #define ARCHIVE 0x20
+#define LFN=READ_ONLY|HIDDEN|SYSTEM|VOLUME_ID
 
 #define READ 0x01 //these included, may not be used
 #define WRITE 0x02
