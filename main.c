@@ -117,8 +117,27 @@ int fetch(unsigned int sector){ //fetch a given sector
 	if(!new_sec){
 		fat_info.current_sector = sector;
 	}
-	printf("finished fetch\n");
 	return new_sec;
+}
+
+unsigned char checksum(unsigned char *pFcbName){ //look up for details
+	int i;
+	unsigned char sum = 0;
+	for(i = 11; i; i--){
+		sum = ((sum & 1) << 7) + (sum >> 1) + *pFcbName++;
+	}
+}
+
+unsigned int set_fat_entry(unsigned int cluster, unsigned int val){
+	unsigned int offset = cluster * 4;
+	unsigned int c = fetch(fat_info.reserved_sectors + (offset/512));
+	return c;
+}
+
+unsigned int get_fat_entry(unsigned int cluster){ //get fat entry for given cluster
+	unsigned int offset = cluster * 4; //4 bytes, FAT32 style
+	fetch(fat_info.reserved_sectors + (offset/512));
+	return *((unsigned int *) &(fat_info.buffer[offset % 512]));
 }
 
 void bpbInit(struct bpb *BPB){
@@ -139,9 +158,9 @@ void init(){ //initialize the FAT32 structure
 	struct bpb *BPB;
 	unsigned int fat_size, root_dir_sectors, data_sectors, cluster_count; //more will be added here
 	//init fat_info for running, and read in first sector, sector zero
-	//fat_info.current_sector = -1;
-	//fat_info.sector_flags = 0;
-	//fetch(0); //actually fetch sector 0
+	fat_info.current_sector = -1;
+	fat_info.sector_flags = 0;
+	fetch(0); //actually fetch sector 0
 	fat_info.fs = open("test.fat", READ_ONLY);
 	
 	BPB = (struct bpb *) fat_info.buffer; //may not be necessary
@@ -189,7 +208,8 @@ void init(){ //initialize the FAT32 structure
 
 }
 
-int main() {
+int main(int argc, char **argv) {
+	
 	init();
 	return 0;   
 }
