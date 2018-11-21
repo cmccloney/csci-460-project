@@ -75,6 +75,21 @@ struct fat32_entry_long {
 	unsigned short name3[2];
 }__attribute__((__packed__));
 
+struct ffile {
+	int start_cluster_parent;
+	int start_cluster;
+	int current_cluster;
+	int current_cluster_index;
+	short current_sector;
+	short current_byte;
+	unsigned int pos;
+	unsigned char flags;
+	unsigned char attribs;
+	unsigned char mode;
+	unsigned int size;
+	char filename[256];
+}__attribute__((__packed__));
+
 #define READ_ONLY 0x01
 #define HIDDEN 0x02
 #define SYSTEM 0x04
@@ -138,6 +153,80 @@ unsigned int get_fat_entry(unsigned int cluster){ //get fat entry for given clus
 	unsigned int offset = cluster * 4; //4 bytes, FAT32 style
 	fetch(fat_info.reserved_sectors + (offset/512));
 	return *((unsigned int *) &(fat_info.buffer[offset % 512]));
+}
+
+unsigned int first_sector(unsigned int cluster){
+	unsigned int first_sector = ((cluster - 2)*fat_info.sectors_per_cluster) + fat_info.first_data_sector;
+	return first_sector;
+}
+
+int seek(struct ffile *fp, unsigned int base, long offset){
+	unsigned int index;
+	long position = base + offset;
+	unsigned int temp;
+	if(position > fp->size){
+		printf("error");
+		return -1;
+	}else if(position == fp->size){
+		fp->size = fp->size + 1;
+	}
+	unsigned int b = 0x0ffffff8; //use to tell this is FAT32
+	index = position / (fat_info.sectors_per_cluster*512); //grab the index of the cluster we want
+	if(index != fp->current_cluster_index){ //if the current cluster is not the cluster we want, do this
+		temp = index;
+		if(index > fp->current_cluster_index){ //if it's larger,
+			index = index - fp->current_cluster_index;
+		}else{ //else if it's equal to or smaller
+			fp->current_cluster = fp->start_cluster;
+		}
+		while(index > 0){ //iterate through each cluster
+			temp = get_fat_entry(fp->current_cluster);
+			if(temp & 0x0fffffff != b){
+				fp->current_cluster = temp;
+			}else{
+				set_fat_entry(fp->current_cluster,temp); //create more space
+				set_fat_entry(temp, b); //make new last cluster
+				fp->current_cluster = temp; //same as above
+			}
+			index--; //next cluster
+		}
+	}
+	fp->current_byte = position % (fat_info.sectors_per_cluster * 512); //calculate offset
+	fp->pos = position;
+	return 0; //might consider not returning any integer at all
+
+}
+
+unsigned int special_compare(struct ffile *fp, unsigned char *name){
+	int i, j = 0;
+	return 1;
+}
+
+int find_file(struct ffile *fp, unsigned char *name){
+	unsigned int rc;
+	seek(fp,0,0);
+	while(1){
+		rc = special_compare(fp,name); //need to implement
+		if(rc < 0) break;
+		else if(rc == 1){ //file found
+			return 0;
+		}
+	}
+	return -1; 
+}
+
+
+unsigned char* traverse(unsigned char *filename, struct ffile *fp){
+	if(*filename == '/'){ //there's no path checking
+		filename++;
+		//smoething about '\x00' can be added
+	}
+	if(find_file(fp, filename)){
+		printf("File not found\n");
+		return NULL;
+	}
+
+
 }
 
 void bpbInit(struct bpb *BPB){
