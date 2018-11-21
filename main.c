@@ -197,16 +197,80 @@ int seek(struct ffile *fp, unsigned int base, long offset){
 
 }
 
+int compare2(struct fat32_entry entry, unsigned char *name){
+	int i;
+	unsigned char file[16];
+	int j = 0;
+	for(i = 0; i < 8; i++){
+		if(entry.filename[i] != ' '){
+			file[j++] = entry.filename[i];
+		}
+	}
+	file[j++] = '.';
+	for(i = 0; i < 3; i++){ //second "half" of looking, after adding a dot to our file string
+		if(entry.extension[i] != ' '){
+			file[j++] = entry.extension[i];
+		}
+	}
+	file[j++] = '\x00'; //necesarry at end of file
+	i = 0; //reset
+	if(i > 13){ //i > 13 reserved for longer names
+		if(strncasecmp(name,file,13)){
+			i = 0; //don't match
+		}else{
+			i = 1; //match
+		}
+	}else{
+		if(file[i] != 0 || strncasecmp(name, file, i)){
+			i = 0; //don't match
+		}else{
+			i = 1; //match
+		}
+	}
+	return i;
+}
+
 unsigned int special_compare(struct ffile *fp, unsigned char *name){
 	int i, j = 0;
+	unsigned int name_length;
+	struct fat32_entry entry;
+	
+	file_read((unsigned char*)&entry, sizeof(struct fat32_entry), fp); //still need to implement
+	if(compare2(entry,name)){
+		seek(fp, -sizeof(struct fat32_entry), fp->pos);
+		return 1; //they match
+	}else{
+		return 0; //they don't match
+	}
+	//may need to add more here
 	return 1;
+}
+
+int file_read(unsigned char *dest, int size, struct ffile *fp){
+	unsigned int sector;
+	while(size > 0){ //while there's still something to iterate through
+		sector = first_sector(fp->current_cluster) + (fp->current_byte / 512);
+		fetch(sector);
+		*dest++ = fat_info.buffer[fp->current_byte % 512]; //hardcoded 512 because this is FAT32
+		size--;
+		if(fp->attribs & 0x10){
+			if(seek(fp,0,fp->pos+1)){
+				return -1;
+			}
+		}else{
+			if(seek(fp,0,fp->pos +1)){ //similar thing
+				return -1;
+			}
+		}
+	}
+	return 0; //otherwise return 0
 }
 
 int find_file(struct ffile *fp, unsigned char *name){
 	unsigned int rc;
 	seek(fp,0,0);
 	while(1){
-		rc = special_compare(fp,name); //need to implement
+		rc = special_compare(fp,name);
 		if(rc < 0) break;
 		else if(rc == 1){ //file found
 			return 0;
@@ -217,7 +281,8 @@ int find_file(struct ffile *fp, unsigned char *name){
 
 
 unsigned char* traverse(unsigned char *filename, struct ffile *fp){
-	if(*filename == '/'){ //there's no path checking
+	struct fat32_entry entry;
+	if(*filename == '/'){ //there's no path, is checking
 		filename++;
 		//smoething about '\x00' can be added
 	}
@@ -225,7 +290,29 @@ unsigned char* traverse(unsigned char *filename, struct ffile *fp){
 		printf("File not found\n");
 		return NULL;
 	}
-
+	file_read((unsigned char*)&entry, sizeof(struct fat32_entry), fp); //need to implement
+	while((*filename != '/') && (*filename != '\x00')){
+		filename = filename + 1; //important, because we're returning filename
+	}
+	//also
+	if(*filename == '/'){
+		filename = filename + 1;
+	}
+	//now have info for next level in path, so
+	fp->start_cluster_parent = fp->start_cluster;
+	fp->start_cluster = ((unsigned int)(entry.cluster_hi & 0xffff) << 16) | (entry.first_cluster & 0xffff); //complex, see sources
+	fp->attribs = entry.attributes;
+	fp->current_cluster = fp->start_cluster;
+	fp->current_cluster_index = 0; //just resetting these values based off next traversal (cluster)
+	fp->current_sector = 0;
+	fp->current_byte = 0;
+	fp->pos = 0;
+	if(entry.attributes & 0x10){
+		fp->size = 0xffffffff;
+	}else{
+		fp->size = entry.file_size;
+	}
+	return filename;
 
 }
 
