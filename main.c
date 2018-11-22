@@ -142,6 +142,7 @@ unsigned char checksum(unsigned char *pFcbName){ //look up for details
 	for(i = 11; i; i--){
 		sum = ((sum & 1) << 7) + (sum >> 1) + *pFcbName++;
 	}
+	return sum;
 }
 
 unsigned int set_fat_entry(unsigned int cluster, unsigned int val){
