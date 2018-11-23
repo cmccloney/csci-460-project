@@ -84,23 +84,32 @@ int open_file(FILE **fp, char *name[]){ //used to open file
 		return 0;
 	}else{ //else, we can open the file
 		*fp = fopen(name[1],"r"); //open the file for reading use only
-		printf("Successfully opened\n");
-		printf("Here are the contents of the file %s:\n",name[1]);
-		int c;
-		while ((c = getc(*fp)) != EOF){ //while we still haven't reached the end of the file,
-			putchar(c); //print out character by character
-		}
-		fclose(*fp); //close the file after reading contents
+		printf("Successfully opened %s\n",name[1]);
+		//printf("Here are the contents of the file %s:\n",name[1]);
+		//int c;
+		//while ((c = getc(*fp)) != EOF){ //while we still haven't reached the end of the file,
+		//	putchar(c); //print out character by character
+		//}
+		//fclose(*fp); //close the file after reading contents
 		return 1; //return 1 if successfully completed
 	}
 }
 
-void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]){
+void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]){ //set new directory
 	int i;
 	for(i = 0; i < 16; i++){ //loop through all 16 entries of directory array, reading in values from fp in order to set the new directory
 		fread(&dir[i],1,32,*fp); //see init_fs for info on fread()
 		*filep = *filep + 32; //increment by 32 because we're in FAT32
 	}
+}
+
+void ls(FILE **fp, struct fat32_entry dir[]){ //list contents of directory
+	int i;
+	for(i = 0; i < 16; i++){
+		
+		printf("%s",8,dir[i].filename);
+		printf(".%s\n",3,dir[i].extension);
+	}	
 }
 
 void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]){ //execute command enterd by user
@@ -120,6 +129,14 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 		}else{
 			*fp = NULL; //set file pointer to null, eg. close the file
 		}
+	}else if(strcmp(command[0],"ls") == 0){ //list contents of directory
+		if(*fp == NULL){
+			printf("Must open the file first\n");
+		}else{
+			ls(&(*fp),dir); //list file directory
+		}
+	}else{
+		printf("Pleas enter a supported command: open, close, exit\n"); //list of supported commands, update as you add more
 	}
 }
 
