@@ -20,10 +20,10 @@ struct fat32_entry{
 }__attribute__((__packed__));
 
 struct fs_attr{
-  unsigned short bytes_per_sector;
-  unsigned char sectors_per_cluster;
-  unsigned char num_fats;
-  unsigned short reserved_sector_count;
-  unsigned int fat_size;
-  char label[11];
+ 	unsigned short bytes_per_sector;
+  	unsigned char sectors_per_cluster;
+  	unsigned char num_fats;
+  	unsigned short reserved_sector_count;
+  	unsigned int fat_size;
+  	char label[11];
 }
