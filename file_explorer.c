@@ -73,21 +73,18 @@ int open_file(FILE **fp, char *name[]){ //used to open file
 void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]){ //set new directory
 	int i;
 	for(i = 0; i < 16; i++){ //loop through all 16 entries of directory array, reading in values from fp in order to set the new directory
+		printf("before : %s\n",dir[i].filename);
 		fread(&dir[i],1,32,*fp); //see init_fs for info on fread()
-		*filep = *filep + 32; //increment by 32 because we're in FAT32
+		//I don't think fread works, need to fix
+		//printf("Here are the contents of the file %s:\n",name[1]);
+                int c;
+                while ((c = getc(*fp)) != EOF){ //while we still haven't reached the end of the file,
+                      putchar(c); //print out character by character
+                }
+                //fclose(*fp); //close the file after reading contents
+		printf("after : %s\n",dir[i].filename);
+		//*filep += 32; //increment by 32 because we're in FAT32
 	}
-}
-
-void ls(FILE **fp, struct fat32_entry dir[]){ //list contents of directory
-	int i;
-	for(i = 0; i < 16; i++){
-		printf("%c : attr = %u\n",dir[i].filename[0],(unsigned int)dir[i].attributes);
-		printf("%u\n\n",(unsigned int)dir[i].filename[0]);
-        	if((dir[i].attributes == 1 || dir[i].attributes == 16 || dir[i].attributes == 32 || dir[i].attributes == 48) && ((unsigned int)dir[i].filename[0] != 0xffffffe5)){
-			printf("%s",8,dir[i].filename);
-			printf(".%s\n",3,dir[i].extension);
-		}
-	}	
 }
 
 void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]){ //execute command enterd by user
@@ -111,7 +108,7 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 		if(*fp == NULL){
 			printf("Must open the file first\n");
 		}else{
-			ls(&(*fp),dir); //list file directory
+			//ls(&(*fp),dir); //list file directory
 		}
 	}else{
 		printf("Pleas enter a supported command: open, close, exit\n"); //list of supported commands, update as you add more
@@ -135,7 +132,6 @@ int main(){
 		while(((arg_p = strsep(&com_copy, " \t\n")) != NULL) && arg_count < 10){ //seperate non-null command on spaces, tabs, and, 
 			//return lines, and make sure the number of arguments is less than ten, do this
 			args[arg_count] = strndup(arg_p, 512); //returns pointer to copied string
-			
 			arg_count++;
 			
 		}
