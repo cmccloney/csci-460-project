@@ -112,7 +112,7 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
                         ls(&(*fp),dir); //list file directory
                 }
         }else{
-		printf("Pleas enter a supported command: open, close, exit\n"); //list of supported commands, update as you add more
+		printf("Pleas enter a supported command: open, close, ls, exit\n"); //list of supported commands, update as you add more
 	}
 }
 
