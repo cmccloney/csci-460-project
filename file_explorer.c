@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include "file_explorer.h"
+
 struct fat32_entry{ //directory entry
 	char filename[8];
 	char extension[3];
