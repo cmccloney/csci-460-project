@@ -72,24 +72,74 @@ void init_fs(FILE **fp, struct fs_attr *fs){ //used to initialize the informatio
 	strcpy(fs->label,name); //copy string over
 }
 
-int open_file(FILE **fp, char *token[]){ //used to open file
+int open_file(FILE **fp, char *name[]){ //used to open file
 	struct stat file_checker;
 	if(*fp != NULL){
 		printf("File already open\n"); //the file is already open if *fp is not null
 		return 0; //return 0 for error
-	}else if(stat(token[1],&file_checker) == -1){ //use this stat struct to check if the file can be found,
+	}else if(stat(name[1],&file_checker) == -1){ //use this stat struct to check if the file can be found,
 						//this 'stat' is used for determining the type of a file, however
 						//if the file can't be found, it will return -1, making it useful in this case
 		printf("File not found\n"); //the file couldn't be found
 		return 0;
 	}else{ //else, we can open the file
-		*fp = fopen(token[1],"r"); //open the file for reading use only
+		*fp = fopen(name[1],"r"); //open the file for reading use only
+		printf("Successfully opened\n");
+		printf("Here are the contents of the file %s:\n",name[1]);
+		int c;
+		while ((c = getc(*fp)) != EOF){ //while we still haven't reached the end of the file,
+			putchar(c); //print out character by character
+		}
+		fclose(*fp); //close the file after reading contents
 		return 1; //return 1 if successfully completed
 	}
 }
 
+void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]){
+	int i;
+	for(i = 0; i < 16; i++){ //loop through all 16 entries of directory array, reading in values from fp in order to set the new directory
+		fread(&dir[i],1,32,*fp); //see init_fs for info on fread()
+		*filep = *filep + 32; //increment by 32 because we're in FAT32
+	}
+}
+
+void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]){ //execute command enterd by user
+	//char temp[]; //might put command into temp, and implement switch statement instead of if-else chain
+	if(strcmp(command[0],"open") == 0){ //if the command entered is 'open'
+		if(open_file(&(*fp),command) == 0){ //if the file failed to open (returned zero)
+			return;
+		}
+		init_fs(&(*fp),&(*fs)); //initialize file system
+		//set up file pointer (# Fats * size * # bytes) + (# reserved sectors * # bytes per reserved sector)
+		*filep = (fs->num_fats * fs->fat_size * fs->bytes_per_sector) + (fs->reserved_sector_count * fs->bytes_per_sector);
+		fseek(*fp, *filep, SEEK_SET); //see init_fs for info. on fseek()
+		set_directory(&(*fp),&(*filep),dir); //set new directory
+	}
+}
 
 int main(){
-	
+	struct fs_attr fs;
+	struct fat32_entry dir[16];
+	char* command = (char*) malloc(512); //set max command size as 512, more than large enough for this small implementation
+	int filep = 0; //int file pointer, necessary for incrementing through file by bit, see set_directory()
+	FILE *fp = NULL; //initialized empty file pointer, passed to execute_command() below
+	int running = 1;
+	while(running){ //infinite loop that keeps the command prompt open
+		printf("Enter command> "); //prompt for command
+		while( fgets(command, 512, stdin) == 0){} //while the user has not inputted anything, loop infinitely
+		int arg_count = 0; //count number of arguments inputted
+		char *args[10]; //max of ten args, can increase, but 10 is more than enough for this project I think
+		char *arg_p; //used in splitting command below
+
+		while(((arg_p = strsep(&command, " \t\n")) != NULL) && arg_count < 10){ //seperate non-null command on spaces, tabs, and, 
+			//return lines, and make sure the number of arguments is less than ten, do this
+			args[arg_count] = strndup(arg_p, 512); //returns pointer to copied string
+			arg_count++;
+			
+		}
+		if(args[0] != NULL){ //if there is a command to be executed
+			execute_command(args,&fp,&filep,&fs,dir); //execute it
+		}
+	}
 	return 0;
 }
