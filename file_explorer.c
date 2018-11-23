@@ -114,6 +114,12 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 		*filep = (fs->num_fats * fs->fat_size * fs->bytes_per_sector) + (fs->reserved_sector_count * fs->bytes_per_sector);
 		fseek(*fp, *filep, SEEK_SET); //see init_fs for info. on fseek()
 		set_directory(&(*fp),&(*filep),dir); //set new directory
+	}else if(strcmp(command[0],"close") == 0){ //close the opened file
+		if(*fp == NULL){
+			printf("No file is open\n");
+		}else{
+			*fp = NULL; //set file pointer to null, eg. close the file
+		}
 	}
 }
 
@@ -130,14 +136,17 @@ int main(){
 		int arg_count = 0; //count number of arguments inputted
 		char *args[10]; //max of ten args, can increase, but 10 is more than enough for this project I think
 		char *arg_p; //used in splitting command below
-
-		while(((arg_p = strsep(&command, " \t\n")) != NULL) && arg_count < 10){ //seperate non-null command on spaces, tabs, and, 
+		char *com_copy = strdup(command); //duplicate command, otherwise our program will fail after 2 or more commands
+		while(((arg_p = strsep(&com_copy, " \t\n")) != NULL) && arg_count < 10){ //seperate non-null command on spaces, tabs, and, 
 			//return lines, and make sure the number of arguments is less than ten, do this
 			args[arg_count] = strndup(arg_p, 512); //returns pointer to copied string
+			
 			arg_count++;
 			
 		}
-		if(args[0] != NULL){ //if there is a command to be executed
+		if(strcmp(args[0],"exit") == 0){ //exit the file reader
+			return 0;
+		} else if(args[0] != NULL){ //if there is a command to be executed
 			execute_command(args,&fp,&filep,&fs,dir); //execute it
 		}
 	}
