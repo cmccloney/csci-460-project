@@ -70,23 +70,6 @@ int open_file(FILE **fp, char *name[]){ //used to open file
 	}
 }
 
-void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]){ //set new directory
-	int i;
-	for(i = 0; i < 16; i++){ //loop through all 16 entries of directory array, reading in values from fp in order to set the new directory
-		printf("before : %s\n",dir[i].filename);
-		fread(&dir[i],1,32,*fp); //see init_fs for info on fread()
-		//I don't think fread works, need to fix
-		//printf("Here are the contents of the file %s:\n",name[1]);
-                int c;
-                while ((c = getc(*fp)) != EOF){ //while we still haven't reached the end of the file,
-                      putchar(c); //print out character by character
-                }
-                //fclose(*fp); //close the file after reading contents
-		printf("after : %s\n",dir[i].filename);
-		//*filep += 32; //increment by 32 because we're in FAT32
-	}
-}
-
 void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]){ //execute command enterd by user
 	//char temp[]; //might put command into temp, and implement switch statement instead of if-else chain
 	if(strcmp(command[0],"open") == 0){ //if the command entered is 'open'
@@ -97,18 +80,11 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 		//set up file pointer (# Fats * size * # bytes) + (# reserved sectors * # bytes per reserved sector)
 		*filep = (fs->num_fats * fs->fat_size * fs->bytes_per_sector) + (fs->reserved_sector_count * fs->bytes_per_sector);
 		fseek(*fp, *filep, SEEK_SET); //see init_fs for info. on fseek()
-		set_directory(&(*fp),&(*filep),dir); //set new directory
 	}else if(strcmp(command[0],"close") == 0){ //close the opened file
 		if(*fp == NULL){
 			printf("No file is open\n");
 		}else{
 			*fp = NULL; //set file pointer to null, eg. close the file
-		}
-	}else if(strcmp(command[0],"ls") == 0){ //list contents of directory
-		if(*fp == NULL){
-			printf("Must open the file first\n");
-		}else{
-			//ls(&(*fp),dir); //list file directory
 		}
 	}else{
 		printf("Pleas enter a supported command: open, close, exit\n"); //list of supported commands, update as you add more
