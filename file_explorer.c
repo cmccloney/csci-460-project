@@ -78,6 +78,16 @@ void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]){ //set new d
         }
 }
 
+void ls(FILE **fp, struct fat32_entry dir[]){
+	int i;
+	for(i = 0; i < 16; i++){
+		if(dir[i].attributes == 1 || dir[i].attributes == 16 || dir[i].attributes == 32 || dir[i].attributes == 48){
+			printf("%.*s",8,dir[i].filename); //print filename
+			printf(".%.*s\n",3,dir[i].extension); //print filetype
+		}
+	}
+}
+
 void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]){ //execute command enterd by user
 	//char temp[]; //might put command into temp, and implement switch statement instead of if-else chain
 	if(strcmp(command[0],"open") == 0){ //if the command entered is 'open'
@@ -88,6 +98,7 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 		//set up file pointer (# Fats * size * # bytes) + (# reserved sectors * # bytes per reserved sector)
 		*filep = (fs->num_fats * fs->fat_size * fs->bytes_per_sector) + (fs->reserved_sector_count * fs->bytes_per_sector);
 		fseek(*fp, *filep, SEEK_SET); //see init_fs for info. on fseek()
+		set_directory(&(*fp),&(*filep),dir);
 	}else if(strcmp(command[0],"close") == 0){ //close the opened file
 		if(*fp == NULL){
 			printf("No file is open\n");
@@ -98,7 +109,7 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
                 if(*fp == NULL){
                         printf("Must open the file first\n");
                 }else{
-                        //ls(&(*fp),dir); //list file directory
+                        ls(&(*fp),dir); //list file directory
                 }
         }else{
 		printf("Pleas enter a supported command: open, close, exit\n"); //list of supported commands, update as you add more
