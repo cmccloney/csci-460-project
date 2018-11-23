@@ -106,9 +106,10 @@ void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]){ //set new d
 void ls(FILE **fp, struct fat32_entry dir[]){ //list contents of directory
 	int i;
 	for(i = 0; i < 16; i++){
-		
-		printf("%s",8,dir[i].filename);
-		printf(".%s\n",3,dir[i].extension);
+        	if((dir[i].attributes == 1 || dir[i].attributes == 16 || dir[i].attributes == 32 || dir[i].attributes == 48) && ((unsigned int)dir[i].filename[0] != 0xffffffe5)){
+			printf("%s",8,dir[i].filename);
+			printf(".%s\n",3,dir[i].extension);
+		}
 	}	
 }
 
