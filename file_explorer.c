@@ -7,6 +7,17 @@
 
 #include "file_explorer.h"
 
+//current list of methods
+void init_fs(FILE **fp, struct fs_attr *fs);
+int open_file(FILE **fp, char *name[]);
+void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]);
+void ls(FILE **fp, struct fat32_entry dir[]);
+void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]);
+int find_address(char *name, struct fat32_entry dir[], struct fs_attr *fs);
+int LABtoOffset(unsigned int sector, struct fs_attr *fs);
+//I haven't had a chance to test these last two functions yet, they may need editing
+//Use these last two for implement the 'cd' change directory command
+
 void init_fs(FILE **fp, struct fs_attr *fs){ //used to initialize the information of the file system we're working with
 	//start with bytes_per_sector
 	unsigned short bytes;
