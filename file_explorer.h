@@ -1,6 +1,5 @@
-struct fat32_entry{ //directory entry
-	char filename[8];
-	char extension[3];
+struct fat32_entry{ //directory entry, view Microsoft white paper pg. 23 for more information
+	char filename[11];
 	unsigned char attributes;
 	unsigned char reserved;
 	unsigned char creation_ms;
