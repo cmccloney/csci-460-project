@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 #include "file_explorer.h"
 
@@ -15,6 +16,10 @@ void init_fs(FILE **fp, struct fs_attr *fs){ //used to initialize the informatio
 	fread(&bytes, 1, 2, *fp); //then, read the block of data from the stream into the value of bytes, or any other
 				//substituted variable defined below
 	fs->bytes_per_sector = bytes; //finally, store this value into their respective variable in the struct fs_attr
+
+	//Because the boot sector is sector 0, we can use the offsets for each variable below as defined as in the Microsoft white
+	//paper pdf, or any other resource on FAT32 online, to determine where the respective information lies in the .img file
+	//(#sectors * sector size + offset = 0 * size + offset = offset).
 
 	//next onto sectors_per_cluster, where we complete a similar operation
 	unsigned char secs;
@@ -81,11 +86,42 @@ void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]){ //set new d
 void ls(FILE **fp, struct fat32_entry dir[]){
 	int i;
 	for(i = 0; i < 16; i++){
+		//only display files with attributes 0x01, 0x10, 0x20, or 0x30 (1,16,32, and 48 in decimal)
 		if(dir[i].attributes == 1 || dir[i].attributes == 16 || dir[i].attributes == 32 || dir[i].attributes == 48){
-			printf("%.*s",8,dir[i].filename); //print filename
-			printf(".%.*s\n",3,dir[i].extension); //print filetype
+			printf("%.*s",11,dir[i].filename); //print filename and extension (combined into filename)
 		}
 	}
+}
+
+int LBAtoOffset(unsigned int sector, struct fs_attr *fs){ //use to translate logical block address to offseted address usable for the find_address() method
+        if(sector == 0){ //if we are in sector zero, we'll need to run this formula
+                //number of fats in the sector, * their size * # bytes + # reserved sectors * their size in bytes
+                return ((fs->num_fats * fs->fat_size * fs->bytes_per_sector) + (fs->reserved_sector_count * fs->bytes_per_sector));
+        }else{
+                return ((sector-2)*fs->bytes_per_sector) + (fs->bytes_per_sector * fs->reserved_sector_count) + (fs->num_fats * fs->fat_size * fs->bytes_per_sector); //similar to above, just adding offset of (sector-2) * it's size in bytes
+        }
+}
+
+
+int find_address(char *name, struct fat32_entry dir[], struct fs_attr *fs){ //find cluster address of directory
+	int i, j;
+	int address = -1; //we will store the address in this variable
+	for(i = 0; i < 16; i++){ //number of directory records is 16, that's why that's there
+		char *dir_name; //used to copy directory name and compare it below to check we found the correct directory
+		j = 0;
+		while(dir[i].filename[j] != '\0' && j < 13){ //'\0' represents end of filename, directonry entry i at index j in name
+			if(dir[i].filename[j] == ' '){
+				dir_name = (char*)malloc(sizeof(char)*j); //allocate memory for the dir_name variable
+				strncpy(dir_name,dir[i].filename,j); //copy j entries of the filename into the variable dir_name
+				break; //break from the loop to continue below
+			}
+			j++; //iterate
+		}
+		if(strcmp(dir_name,name) == 0){ //if the correct directory specified by the user is found
+			address = LBAtoOffset(dir[i].first_cluster,&(*fs)); //get actual address
+		}	
+	}
+	return address; //if -1 is returned the directory was not found
 }
 
 void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]){ //execute command enterd by user
@@ -101,17 +137,23 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 		set_directory(&(*fp),&(*filep),dir);
 	}else if(strcmp(command[0],"close") == 0){ //close the opened file
 		if(*fp == NULL){
-			printf("No file is open\n");
+			printf("No image file is open\n");
 		}else{
 			*fp = NULL; //set file pointer to null, eg. close the file
 		}
 	}else if(strcmp(command[0],"ls") == 0){ //list contents of directory
                 if(*fp == NULL){
-                        printf("Must open the file first\n");
+                        printf("Must open the image file first\n");
                 }else{
                         ls(&(*fp),dir); //list file directory
                 }
-        }else{
+        }else if(strcmp(command[0],"cd") == 0){
+		if(*fp == NULL){
+			printf("Must open the image file first\n");
+		}else{
+			//cd(command[1],&(*fp),&(*filep),dir,&(*fs)); //change directory, command[1] is name of new directory
+		}
+	}else{
 		printf("Pleas enter a supported command: open, close, ls, exit\n"); //list of supported commands, update as you add more
 	}
 }
