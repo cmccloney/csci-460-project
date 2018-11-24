@@ -88,7 +88,7 @@ void ls(FILE **fp, struct fat32_entry dir[]){
 	for(i = 0; i < 16; i++){
 		//only display files with attributes 0x01, 0x10, 0x20, or 0x30 (1,16,32, and 48 in decimal)
 		if(dir[i].attributes == 1 || dir[i].attributes == 16 || dir[i].attributes == 32 || dir[i].attributes == 48){
-			printf("%.*s",11,dir[i].filename); //print filename and extension (combined into filename)
+			printf("%.*s\n",11,dir[i].filename); //print filename and extension (combined into filename)
 		}
 	}
 }
