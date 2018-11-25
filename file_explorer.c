@@ -13,6 +13,7 @@ int open_file(FILE **fp, char *name[]);
 void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]);
 void ls(FILE **fp, struct fat32_entry dir[]);
 void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]);
+void pwd(struct fs_attr *fs);
 int find_address(char *name, struct fat32_entry dir[], struct fs_attr *fs);
 int LABtoOffset(unsigned int sector, struct fs_attr *fs);
 //I haven't had a chance to test these last two functions yet, they may need editing
@@ -61,6 +62,8 @@ void init_fs(FILE **fp, struct fs_attr *fs){ //used to initialize the informatio
 	fseek(*fp, 71, SEEK_SET);
 	fread(&name, 1, 11, *fp);
 	strcpy(fs->label,name); //copy string over
+
+	//printf("%d\n",fs->fat_size); //debugging
 }
 
 int open_file(FILE **fp, char *name[]){ //used to open file
@@ -94,14 +97,19 @@ void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]){ //set new d
         }
 }
 
-void ls(FILE **fp, struct fat32_entry dir[]){
+void ls(FILE **fp, struct fat32_entry dir[]){ //list contents of directory
 	int i;
+	//printf(" first entry: %s\n",dir[0].filename);
 	for(i = 0; i < 16; i++){
 		//only display files with attributes 0x01, 0x10, 0x20, or 0x30 (1,16,32, and 48 in decimal)
 		if(dir[i].attributes == 1 || dir[i].attributes == 16 || dir[i].attributes == 32 || dir[i].attributes == 48){
 			printf("%.*s\n",11,dir[i].filename); //print filename and extension (combined into filename)
 		}
 	}
+}
+
+void pwd(struct fs_attr *fs){ //print working directory
+	printf("/%s\n",fs->label); //may or may not work right now
 }
 
 int LBAtoOffset(unsigned int sector, struct fs_attr *fs){ //use to translate logical block address to offseted address usable for the find_address() method
@@ -158,11 +166,11 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
                 }else{
                         ls(&(*fp),dir); //list file directory
                 }
-        }else if(strcmp(command[0],"cd") == 0){
+        }else if(strcmp(command[0],"pwd") == 0){
 		if(*fp == NULL){
 			printf("Must open the image file first\n");
 		}else{
-			//cd(command[1],&(*fp),&(*filep),dir,&(*fs)); //change directory, command[1] is name of new directory
+			pwd(&(*fs));
 		}
 	}else{
 		printf("Pleas enter a supported command: open, close, ls, exit\n"); //list of supported commands, update as you add more
