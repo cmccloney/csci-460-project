@@ -13,11 +13,13 @@ int open_file(FILE **fp, char *name[]);
 void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]);
 void ls(FILE **fp, struct fat32_entry dir[]);
 void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]);
-void pwd(struct fs_attr *fs);
+void pwd();
 int find_address(char *name, struct fat32_entry dir[], struct fs_attr *fs);
 int LABtoOffset(unsigned int sector, struct fs_attr *fs);
 //I haven't had a chance to test these last two functions yet, they may need editing
 //Use these last two for implement the 'cd' change directory command
+
+char* current_directory = "/"; //will need to update this string when the 'cd' command is run
 
 void init_fs(FILE **fp, struct fs_attr *fs){ //used to initialize the information of the file system we're working with
 	//start with bytes_per_sector
@@ -108,17 +110,12 @@ void ls(FILE **fp, struct fat32_entry dir[]){ //list contents of directory
 	}
 }
 
-void pwd(struct fs_attr *fs){ //print working directory
-	printf("/%s\n",fs->label); //may or may not work right now
+void pwd(){ //print working directory
+	printf("%s\n",current_directory);
 }
 
 int LBAtoOffset(unsigned int sector, struct fs_attr *fs){ //use to translate logical block address to offseted address usable for the find_address() method
-        if(sector == 0){ //if we are in sector zero, we'll need to run this formula
-                //number of fats in the sector, * their size * # bytes + # reserved sectors * their size in bytes
-                return ((fs->num_fats * fs->fat_size * fs->bytes_per_sector) + (fs->reserved_sector_count * fs->bytes_per_sector));
-        }else{
-                return ((sector-2)*fs->bytes_per_sector) + (fs->bytes_per_sector * fs->reserved_sector_count) + (fs->num_fats * fs->fat_size * fs->bytes_per_sector); //similar to above, just adding offset of (sector-2) * it's size in bytes
-        }
+        return ((sector-2)*fs->bytes_per_sector) + (fs->bytes_per_sector * fs->reserved_sector_count) + (fs->num_fats * fs->fat_size * fs->bytes_per_sector); //similar to above, just adding offset of (sector-2) * it's size in bytes
 }
 
 
@@ -170,10 +167,10 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 		if(*fp == NULL){
 			printf("Must open the image file first\n");
 		}else{
-			pwd(&(*fs));
+			pwd();
 		}
 	}else{
-		printf("Pleas enter a supported command: open, close, ls, exit\n"); //list of supported commands, update as you add more
+		printf("Pleas enter a supported command: open, close, ls, pwd, cd, exit\n"); //list of supported commands, update as you add more
 	}
 }
 
