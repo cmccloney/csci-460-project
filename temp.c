@@ -14,7 +14,7 @@ void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]);
 void ls(FILE **fp, struct fat32_entry dir[]);
 void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]);
 void pwd();
-void cd();
+void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePointer, struct fs_attr *info);
 int find_address(char *name, struct fat32_entry dir[], struct fs_attr *fs);
 int LABtoOffset(unsigned int sector, struct fs_attr *fs);
 //I haven't had a chance to test these last two functions yet, they may need editing
@@ -126,11 +126,11 @@ void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePoint
 	int i = 0;
 	while(directoryName[i] != '\0')
 	{
-		directoryName[i] = touppper(directoryName[i]);
+		directoryName[i] = toupper(directoryName[i]);
 		i++;
 	}
 
-	int i = 0;//where we are in the string
+	i = 0;//where we are in the string
 	int j = 0;//the start index of the directory name in the string
 	int dirLength = 0;//the length of the directory name
 
@@ -151,7 +151,7 @@ void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePoint
 		}
 		//reassign file pointer
 		fseek(*fp, *filePointer, SEEK_SET);
-		set_directory(&(*fp),dir,&(*filePointer));
+		set_directory(&(*fp),&(*filePointer),dir);
 		continue;
 	}
 	dirLength++;
@@ -166,7 +166,7 @@ void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePoint
 		return;
 	}
 	fseek(*fp, *filePointer, SEEK_SET);
-	set_directory(&(*fp),dir,&(*filePointer));
+	set_directory(&(*fp),&(*filePointer),dir);
 }
 
 int LBAtoOffset(unsigned int sector, struct fs_attr *fs){ //use to translate logical block address to offseted address usable for the find_address() method
@@ -223,6 +223,12 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 			printf("Must open the image file first\n");
 		}else{
 			pwd();
+		}
+	}else if(strcmp(command[0],"cd") == 0){
+		if(*fp == NULL){
+			printf("Must open the image file first\n");
+		}else{
+			cd(command[1], &(*fp), dir, &(*filep), &(*fs));
 		}
 	}else{
 		printf("Pleas enter a supported command: open, close, ls, pwd, cd, exit\n"); //list of supported commands, update as you add more
