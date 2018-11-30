@@ -14,12 +14,15 @@ void set_directory(FILE **fp, int* filep, struct fat32_entry dir[]);
 void ls(FILE **fp, struct fat32_entry dir[]);
 void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs, struct fat32_entry dir[]);
 void pwd();
+void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePointer, struct fs_attr *info);
 int find_address(char *name, struct fat32_entry dir[], struct fs_attr *fs);
 int LABtoOffset(unsigned int sector, struct fs_attr *fs);
 //I haven't had a chance to test these last two functions yet, they may need editing
 //Use these last two for implement the 'cd' change directory command
 
-char* current_directory = "/"; //will need to update this string when the 'cd' command is run
+//will need to update this string when the 'cd' command is run
+char* current_directory = "/";
+int root = 1;
 
 void init_fs(FILE **fp, struct fs_attr *fs){ //used to initialize the information of the file system we're working with
 	//start with bytes_per_sector
@@ -111,7 +114,97 @@ void ls(FILE **fp, struct fat32_entry dir[]){ //list contents of directory
 }
 
 void pwd(){ //print working directory
-	printf("%s\n",current_directory);
+	if(root){
+		printf("%s\n",current_directory);
+	}else{
+		printf("%.*s\n",(int)strlen(current_directory),current_directory + 1);
+	}
+}
+
+//change directory function
+//this allows the user to change directories using the cd command
+void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePointer, struct fs_attr *info)
+{
+	if(directoryName == NULL) //if cd command is not followed by a directory, go back to root directory
+		return;
+
+//converting to upper case
+	int i = 0;
+	while(directoryName[i] != '\0')
+	{
+		directoryName[i] = toupper(directoryName[i]);
+		i++;
+	}
+
+	i = 0;//where we are in the string
+	int j = 0;//the start index of the directory name in the string
+	int dirLength = 0;//the length of the directory name
+
+	while(directoryName[i] != '\0'){
+		if (directoryName[i] == '/'){
+			char temp [dirLength+1];
+			strncpy(temp,directoryName + j, i-j);
+			temp[dirLength] = '\0';
+			j = i + 1;
+			dirLength = 0;
+			i++;
+
+		*filePointer = find_address(temp,dir, &(*info));
+
+		if(*filePointer == -1){
+			printf("cd: %s: No such file or directory\n", directoryName);
+			return;
+		}
+		//directory exits, so reset pwd() value to new directory
+		char* temp2;
+		if(strcmp(temp,"..") != 0){ //if it does not equal ..
+			root = 0;
+			temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
+			temp2[0] = '\0'; //empty array
+			strcat(temp2,current_directory); //copy current_directory
+			strcat(temp2,"/");
+			strcat(temp2,temp); //plus new directory, to get full path
+			current_directory = temp2; //reset pointer to this character array
+		}/*else if(strcmp(current_directory,"/") != 0){ //otherwise we're dealing with a .., and not at root
+			char* temp3;
+			temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
+			int length = strlen(temp2);
+			strcat(temp2,"/"); //root slash
+			while((temp3 = strsep(&current_directory, "/")) != NULL){
+				strcat(temp2,current_directory);
+				strcat(temp2,"/");
+			}
+			int c = 0;
+			current_directory = temp2;
+		}*/
+		//reassign file pointer
+		fseek(*fp, *filePointer, SEEK_SET);
+		set_directory(&(*fp),&(*filePointer),dir);
+		continue;
+	}
+	dirLength++;
+	i++;
+	}
+
+	char temp[dirLength+1];
+	strncpy(temp,directoryName + j, (i+1)-j);
+	*filePointer = find_address(temp,dir,&(*info));
+	if(*filePointer == -1){
+		printf("cd: %s: No such file or directory\n", directoryName);
+		return;
+	}
+	char* temp2; //same code repeated from above
+	if(strcmp(temp,"..") != 0){ //if it doesn't equal ..
+		root = 0;
+		temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
+		temp2[0] = '\0'; //empty array
+		strcat(temp2,current_directory); //copy current_directory
+		strcat(temp2,"/");
+		strcat(temp2,temp); //plus new directory, to get full path
+		current_directory = temp2; //reset pointer to this character array
+	}
+	fseek(*fp, *filePointer, SEEK_SET);
+	set_directory(&(*fp),&(*filePointer),dir);
 }
 
 int LBAtoOffset(unsigned int sector, struct fs_attr *fs){ //use to translate logical block address to offseted address usable for the find_address() method
@@ -135,6 +228,10 @@ int find_address(char *name, struct fat32_entry dir[], struct fs_attr *fs){ //fi
 		}
 		if(strcmp(dir_name,name) == 0){ //if the correct directory specified by the user is found
 			address = LBAtoOffset(dir[i].first_cluster,&(*fs)); //get actual address
+			if(dir[i].first_cluster == 0){ //if the first cluster is zero, manually assignt he address
+				address = (fs->num_fats * fs->fat_size * fs->bytes_per_sector) + (fs->reserved_sector_count * fs->bytes_per_sector);
+			}
+			break; //break from the for loop
 		}	
 	}
 	return address; //if -1 is returned the directory was not found
@@ -168,6 +265,12 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 			printf("Must open the image file first\n");
 		}else{
 			pwd();
+		}
+	}else if(strcmp(command[0],"cd") == 0){
+		if(*fp == NULL){
+			printf("Must open the image file first\n");
+		}else{
+			cd(command[1], &(*fp), dir, &(*filep), &(*fs));
 		}
 	}else{
 		printf("Pleas enter a supported command: open, close, ls, pwd, cd, exit\n"); //list of supported commands, update as you add more
