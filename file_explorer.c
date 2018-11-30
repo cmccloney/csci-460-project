@@ -165,18 +165,39 @@ void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePoint
 			strcat(temp2,"/");
 			strcat(temp2,temp); //plus new directory, to get full path
 			current_directory = temp2; //reset pointer to this character array
-		}/*else if(strcmp(current_directory,"/") != 0){ //otherwise we're dealing with a .., and not at root
-			char* temp3;
+		}else if(strcmp(current_directory,"/") != 0){ //otherwise we're dealing with a .., and not at root
+			/*char* temp3;
+			char** temp4;
 			temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
-			int length = strlen(temp2);
+			temp2[0] = '\0';
 			strcat(temp2,"/"); //root slash
-			while((temp3 = strsep(&current_directory, "/")) != NULL){
-				strcat(temp2,current_directory);
-				strcat(temp2,"/");
-			}
 			int c = 0;
+			printf("here\n");
+			while((temp3 = strsep(&current_directory, "/")) != NULL){
+				printf("%s\n",temp3);
+				&(temp4[c]) = malloc(strlen(current_directory)+strlen(temp)+1);
+				&(temp4[c]) = '\0';
+				strcat(&(temp4[c]),current_directory);
+				strcat(&(temp4[c]),"/");
+				c++;
+			}
+			printf("here2\n");
+			int index = 0;
+			for(index = 0; index < c-1; index++){
+				strcat(temp2,&(temp4[index]));
+			}*/
+			temp2 = malloc(strlen(current_directory));
+			temp2[0] = '\0';
+			int length = ((int)strlen(current_directory) - 8);
+			if(length > 7){
+				strncpy(temp2, current_directory, length);
+				root = 0;
+			}else{
+				temp2 = "/";
+				root = 1;
+			}
 			current_directory = temp2;
-		}*/
+		}
 		//reassign file pointer
 		fseek(*fp, *filePointer, SEEK_SET);
 		set_directory(&(*fp),&(*filePointer),dir);
@@ -253,6 +274,9 @@ void execute_command(char *command[], FILE **fp, int *filep, struct fs_attr *fs,
 			printf("No image file is open\n");
 		}else{
 			*fp = NULL; //set file pointer to null, eg. close the file
+			char* temp = "/";
+			current_directory = temp;
+			root = 1;
 		}
 	}else if(strcmp(command[0],"ls") == 0){ //list contents of directory
                 if(*fp == NULL){
