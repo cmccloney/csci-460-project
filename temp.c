@@ -175,6 +175,12 @@ void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePoint
 		printf("cd: %s: No such file or directory\n", directoryName);
 		return;
 	}
+	char* temp2; //same code repeated from above
+	temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
+	temp2[0] = '\0'; //empty array
+	strcat(temp2,current_directory); //copy current_directory
+	strcat(temp2,temp); //plus new directory, to get full path
+	current_directory = temp2; //reset pointer to this character array
 	fseek(*fp, *filePointer, SEEK_SET);
 	set_directory(&(*fp),&(*filePointer),dir);
 }
