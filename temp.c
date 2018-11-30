@@ -20,7 +20,9 @@ int LABtoOffset(unsigned int sector, struct fs_attr *fs);
 //I haven't had a chance to test these last two functions yet, they may need editing
 //Use these last two for implement the 'cd' change directory command
 
-char* current_directory = "/"; //will need to update this string when the 'cd' command is run
+//will need to update this string when the 'cd' command is run
+char* current_directory = "/";
+
 
 void init_fs(FILE **fp, struct fs_attr *fs){ //used to initialize the information of the file system we're working with
 	//start with bytes_per_sector
@@ -149,6 +151,14 @@ void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePoint
 			printf("cd: %s: No such file or directory\n", directoryName);
 			return;
 		}
+		//directory exits, so reset pwd() value to new directory
+		char* temp2;
+		temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
+		temp2[0] = '\0'; //empty array
+		strcat(temp2,current_directory); //copy current_directory
+		strcat(temp2,temp); //plus new directory, to get full path
+		current_directory = temp2; //reset pointer to this character array
+		
 		//reassign file pointer
 		fseek(*fp, *filePointer, SEEK_SET);
 		set_directory(&(*fp),&(*filePointer),dir);
@@ -190,6 +200,10 @@ int find_address(char *name, struct fat32_entry dir[], struct fs_attr *fs){ //fi
 		}
 		if(strcmp(dir_name,name) == 0){ //if the correct directory specified by the user is found
 			address = LBAtoOffset(dir[i].first_cluster,&(*fs)); //get actual address
+			if(dir[i].first_cluster == 0){ //if the first cluster is zero, manually assignt he address
+				address = (fs->num_fats * fs->fat_size * fs->bytes_per_sector) + (fs->reserved_sector_count * fs->bytes_per_sector);
+			}
+			break; //break from the for loop
 		}	
 	}
 	return address; //if -1 is returned the directory was not found
