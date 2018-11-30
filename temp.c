@@ -22,7 +22,7 @@ int LABtoOffset(unsigned int sector, struct fs_attr *fs);
 
 //will need to update this string when the 'cd' command is run
 char* current_directory = "/";
-
+int root = 1;
 
 void init_fs(FILE **fp, struct fs_attr *fs){ //used to initialize the information of the file system we're working with
 	//start with bytes_per_sector
@@ -114,7 +114,11 @@ void ls(FILE **fp, struct fat32_entry dir[]){ //list contents of directory
 }
 
 void pwd(){ //print working directory
-	printf("%s\n",current_directory);
+	if(root){
+		printf("%s\n",current_directory);
+	}else{
+		printf("%.*s\n",(int)strlen(current_directory),current_directory + 1);
+	}
 }
 
 //change directory function
@@ -153,12 +157,26 @@ void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePoint
 		}
 		//directory exits, so reset pwd() value to new directory
 		char* temp2;
-		temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
-		temp2[0] = '\0'; //empty array
-		strcat(temp2,current_directory); //copy current_directory
-		strcat(temp2,temp); //plus new directory, to get full path
-		current_directory = temp2; //reset pointer to this character array
-		
+		if(strcmp(temp,"..") != 0){ //if it does not equal ..
+			root = 0;
+			temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
+			temp2[0] = '\0'; //empty array
+			strcat(temp2,current_directory); //copy current_directory
+			strcat(temp2,"/");
+			strcat(temp2,temp); //plus new directory, to get full path
+			current_directory = temp2; //reset pointer to this character array
+		}/*else if(strcmp(current_directory,"/") != 0){ //otherwise we're dealing with a .., and not at root
+			char* temp3;
+			temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
+			int length = strlen(temp2);
+			strcat(temp2,"/"); //root slash
+			while((temp3 = strsep(&current_directory, "/")) != NULL){
+				strcat(temp2,current_directory);
+				strcat(temp2,"/");
+			}
+			int c = 0;
+			current_directory = temp2;
+		}*/
 		//reassign file pointer
 		fseek(*fp, *filePointer, SEEK_SET);
 		set_directory(&(*fp),&(*filePointer),dir);
@@ -176,11 +194,15 @@ void cd(char* directoryName, FILE **fp, struct fat32_entry dir[], int *filePoint
 		return;
 	}
 	char* temp2; //same code repeated from above
-	temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
-	temp2[0] = '\0'; //empty array
-	strcat(temp2,current_directory); //copy current_directory
-	strcat(temp2,temp); //plus new directory, to get full path
-	current_directory = temp2; //reset pointer to this character array
+	if(strcmp(temp,"..") != 0){ //if it doesn't equal ..
+		root = 0;
+		temp2 = malloc(strlen(current_directory)+strlen(temp)+1);
+		temp2[0] = '\0'; //empty array
+		strcat(temp2,current_directory); //copy current_directory
+		strcat(temp2,"/");
+		strcat(temp2,temp); //plus new directory, to get full path
+		current_directory = temp2; //reset pointer to this character array
+	}
 	fseek(*fp, *filePointer, SEEK_SET);
 	set_directory(&(*fp),&(*filePointer),dir);
 }
